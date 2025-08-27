@@ -1,0 +1,1093 @@
+(function() {
+    'use strict';
+
+    // Disable HubSpot's default cookie banner
+    window.disableHubSpotCookieBanner = true;
+
+    // Remove any existing HubSpot banner
+    const existingBanner = document.querySelector('[id*="hs-eu-cookie"], [class*="cookie"]');
+    if (existingBanner) existingBanner.remove();
+
+    // Inject Enhanced CSS Styles
+    const styles = `
+        #hs-eu-cookie-confirmation {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #361d5c 0%, #4a2870 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+            border-top: 3px solid #f6c370;
+            display: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #hs-eu-cookie-confirmation.show {
+            display: block;
+        }
+
+        .banner-content {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .banner-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .banner-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .banner-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .banner-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            margin: auto;
+            border: 2px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .settings-btn {
+            background: transparent;
+            color: #f6c370;
+            border: 2px solid #f6c370;
+        }
+
+        .settings-btn:hover:not(:disabled) {
+            background: #f6c370;
+            color: #361d5c;
+        }
+
+        .accept-btn {
+            background: #4caf50;
+            color: white;
+        }
+
+        .accept-btn:hover:not(:disabled) {
+            background: #45a049;
+        }
+
+        .decline-btn {
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .decline-btn:hover:not(:disabled) {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .option-a-categories {
+            margin: 20px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(246, 195, 112, 0.2);
+            display: none;
+        }
+
+        .option-a-categories.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .category-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .category-header h3 {
+            color: #f6c370;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+
+        .category {
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .category-label {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .category-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .learn-more-btn {
+            background: transparent;
+            color: #f6c370;
+            border: 1px solid #f6c370;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        .learn-more-btn:hover {
+            background: #f6c370;
+            color: #361d5c;
+        }
+
+        /* Enhanced Toggle/Slider Styles */
+        .toggle-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+            border: 2px solid transparent;
+            box-sizing: border-box;
+        }
+
+        .toggle:focus {
+            border-color: #f6c370;
+            box-shadow: 0 0 0 2px rgba(246, 195, 112, 0.3);
+        }
+
+        .toggle:hover:not(.disabled) {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+
+        .toggle.active {
+            background: #f6c370;
+        }
+
+        .toggle.active:hover {
+            background: #e6b165;
+        }
+
+        .toggle.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toggle::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle.active::before {
+            transform: translateX(24px);
+            background: #361d5c;
+            box-shadow: 0 2px 8px rgba(54, 29, 92, 0.3);
+        }
+
+        .toggle.transitioning::before {
+            transition-duration: 0.2s;
+        }
+
+        /* Screen reader support */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .category-details {
+            max-height: 0;
+            overflow: hidden;
+            background: rgba(0,0,0,0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .category-details.expanded {
+            max-height: 400px;
+            padding: 15px;
+        }
+
+        .cookie-list {
+            margin-top: 10px;
+        }
+
+        .cookie-item {
+            background: rgba(255,255,255,0.03);
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .cookie-name {
+            font-weight: bold;
+            color: #f6c370;
+            font-size: 14px;
+        }
+
+        .cookie-purpose {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            margin: 4px 0;
+        }
+
+        .cookie-description {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.3;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 120px;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #f6c370 0%, #ffd67b 100%);
+            color: #361d5c;
+        }
+
+        .save-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #e6b165 0%, #f0c86b 100%);
+        }
+
+        .accept-all-btn {
+            background: transparent;
+            color: #4caf50;
+            border: 1px solid #4caf50;
+        }
+
+        .accept-all-btn:hover:not(:disabled) {
+            background: #4caf50;
+            color: white;
+        }
+
+        .reject-all-btn {
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .reject-all-btn:hover:not(:disabled) {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .always-active {
+            color: #f6c370;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            background: rgba(246, 195, 112, 0.15);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(246, 195, 112, 0.3);
+            white-space: nowrap;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+            z-index: 10001;
+            font-weight: 600;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            background: #f44336;
+            box-shadow: 0 4px 20px rgba(244, 67, 54, 0.3);
+        }
+
+        .toast.warning {
+            background: #ff9800;
+            box-shadow: 0 4px 20px rgba(255, 152, 0, 0.3);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #ffffff;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .banner-buttons, .category-controls, .action-buttons {
+                flex-direction: column;
+            }
+
+            .category-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .category-controls {
+                justify-content: space-between;
+            }
+
+            .toggle {
+                width: 44px;
+                height: 22px;
+            }
+
+            .toggle::before {
+                width: 16px;
+                height: 16px;
+                top: 3px;
+            }
+
+            .toggle.active::before {
+                transform: translateX(22px);
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .toggle {
+                border: 2px solid white;
+            }
+            
+            .toggle.active {
+                border-color: #f6c370;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            .toggle, .toggle::before, .category-details, .toast {
+                transition: none;
+            }
+        }
+    `;
+
+    // Create and inject styles
+    const styleElement = document.createElement('style');
+    styleElement.textContent = styles;
+    document.head.appendChild(styleElement);
+
+    // Enhanced HTML Structure with proper accessibility
+    const bannerHTML = `
+        <div id="hs-eu-cookie-confirmation" role="dialog" aria-labelledby="cookie-banner-title" aria-describedby="cookie-banner-description">
+            <div class="banner-content">
+                <h2 id="cookie-banner-title" class="sr-only">Cookie Consent</h2>
+                <div id="hs-eu-policy-wording" id="cookie-banner-description">
+                    <p>This website uses cookies to function properly and, with your consent, to collect data for analytics and personalized content.
+Essential cookies are always active. You can choose which types of optional cookies to allow by selecting "Manage Cookie Preferences" below.</p>
+                </div>
+
+                <!-- Enhanced Option A Categories -->
+                <div id="option-a-categories" class="option-a-categories" role="region" aria-labelledby="preferences-title">
+                    <div class="category-header">
+                        <h3 id="preferences-title">Choose Your Cookie Preferences</h3>
+                        <p>Click "Learn More" to see details about each cookie category.</p>
+                    </div>
+
+                    <!-- Essential Cookies -->
+                    <div class="category">
+                        <div class="category-item">
+                            <div class="category-info">
+                                <span class="category-label">Essential Cookies</span>
+                            </div>
+                            <div class="category-controls">
+                                <button class="learn-more-btn" onclick="window.LSRetailCookies.toggleDetails('essential')" aria-expanded="false" aria-controls="essential-details">Learn More</button>
+                                <span class="always-active">Always Active</span>
+                            </div>
+                        </div>
+                        <div id="essential-details" class="category-details" aria-hidden="true">
+                            <p><strong>These cookies are necessary for LS Retail's platform to function properly (21 cookies).</strong></p>
+                            <div class="cookie-list">
+                                <div class="cookie-item">
+                                    <div class="cookie-name">__cf_bm</div>
+                                    <div class="cookie-purpose">Provider: hscta.net | Duration: session</div>
+                                    <div class="cookie-description">Cloud flare's bot products identify and mitigate automated traffic to protect your site from bad bots.</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">__hs_do_not_track</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: 179 days</div>
+                                    <div class="cookie-description">Prevents the tracking code from sending any information to HubSpot</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">__hs_cookie_cat_pref</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: session</div>
+                                    <div class="cookie-description">The HubSpot Cookie Banner's consent preferences cookie.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Functional Cookies -->
+                    <div class="category">
+                        <div class="category-item">
+                            <div class="category-info">
+                                <span class="category-label">Functional Cookies</span>
+                            </div>
+                            <div class="category-controls">
+                                <button class="learn-more-btn" onclick="window.LSRetailCookies.toggleDetails('functional')" aria-expanded="false" aria-controls="functional-details">Learn More</button>
+                                <div class="toggle-wrapper">
+                                    <button class="toggle" 
+                                            role="switch" 
+                                            aria-checked="false" 
+                                            aria-labelledby="functional-label"
+                                            data-category="functional"
+                                            tabindex="0">
+                                        <span class="sr-only" id="functional-label">Enable Functional Cookies</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="functional-details" class="category-details" aria-hidden="true">
+                            <p><strong>Enable enhanced functionality and personalization features (9 cookies).</strong></p>
+                            <div class="cookie-list">
+                                <div class="cookie-item">
+                                    <div class="cookie-name">sp_t</div>
+                                    <div class="cookie-purpose">Provider: spotify.com | Duration: session</div>
+                                    <div class="cookie-description">Required to ensure the functionality of the integrated Spotify plugin.</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">_clck</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: session</div>
+                                    <div class="cookie-description">Microsoft Clarity click tracking cookie for user interaction analysis.</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">YSC</div>
+                                    <div class="cookie-purpose">Provider: youtube.com | Duration: session</div>
+                                    <div class="cookie-description">Registers a unique ID to keep statistics of what videos from YouTube the user has seen.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Cookies -->
+                    <div class="category">
+                        <div class="category-item">
+                            <div class="category-info">
+                                <span class="category-label">Analytics Cookies</span>
+                            </div>
+                            <div class="category-controls">
+                                <button class="learn-more-btn" onclick="window.LSRetailCookies.toggleDetails('analytics')" aria-expanded="false" aria-controls="analytics-details">Learn More</button>
+                                <div class="toggle-wrapper">
+                                    <button class="toggle" 
+                                            role="switch" 
+                                            aria-checked="false" 
+                                            aria-labelledby="analytics-label"
+                                            data-category="analytics"
+                                            tabindex="0">
+                                        <span class="sr-only" id="analytics-label">Enable Analytics Cookies</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="analytics-details" class="category-details" aria-hidden="true">
+                            <p><strong>Help us understand how businesses use our retail solutions (10 cookies).</strong></p>
+                            <div class="cookie-list">
+                                <div class="cookie-item">
+                                    <div class="cookie-name">_ga</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: 399 days</div>
+                                    <div class="cookie-description">ID used to identify users</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">__hstc</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: 179 days</div>
+                                    <div class="cookie-description">Analytics tracking cookie</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">hubspotutk</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: 179 days</div>
+                                    <div class="cookie-description">Contains visitor's identity</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Marketing Cookies -->
+                    <div class="category">
+                        <div class="category-item">
+                            <div class="category-info">
+                                <span class="category-label">Marketing Cookies</span>
+                            </div>
+                            <div class="category-controls">
+                                <button class="learn-more-btn" onclick="window.LSRetailCookies.toggleDetails('marketing')" aria-expanded="false" aria-controls="marketing-details">Learn More</button>
+                                <div class="toggle-wrapper">
+                                    <button class="toggle" 
+                                            role="switch" 
+                                            aria-checked="false" 
+                                            aria-labelledby="marketing-label"
+                                            data-category="marketing"
+                                            tabindex="0">
+                                        <span class="sr-only" id="marketing-label">Enable Marketing Cookies</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="marketing-details" class="category-details" aria-hidden="true">
+                            <p><strong>Enable targeted content about our unified commerce solutions (14 cookies).</strong></p>
+                            <div class="cookie-list">
+                                <div class="cookie-item">
+                                    <div class="cookie-name">_fbp</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: 89 days</div>
+                                    <div class="cookie-description">Facebook analytics cookie</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">_gcl_au</div>
+                                    <div class="cookie-purpose">Provider: lsretail.com | Duration: 89 days</div>
+                                    <div class="cookie-description">Used by Google AdSense for experimenting with advertisement efficiency.</div>
+                                </div>
+                                <div class="cookie-item">
+                                    <div class="cookie-name">bcookie</div>
+                                    <div class="cookie-purpose">Provider: linkedin.com | Duration: 365 days</div>
+                                    <div class="cookie-description">Used by LinkedIn to track the use of embedded services.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="action-btn save-btn" onclick="window.LSRetailCookies.savePreferences()">
+                            <span class="btn-text">Confirm My Choices</span>
+                        </button>
+                        <button class="action-btn accept-all-btn" onclick="window.LSRetailCookies.acceptAll()">
+                            <span class="btn-text">Accept All</span>
+                        </button>
+                        <button class="action-btn reject-all-btn" onclick="window.LSRetailCookies.rejectAll()">
+                            <span class="btn-text">Reject All Optional</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="banner-buttons">
+                    <button class="banner-btn settings-btn" id="hs-eu-cookie-settings-button" onclick="window.LSRetailCookies.showOptionA()">
+                        <span class="btn-text">Manage Cookie Preferences</span>
+                    </button>
+                    <button class="banner-btn accept-btn" onclick="window.LSRetailCookies.acceptAll()">
+                        <span class="btn-text">Accept all</span>
+                    </button>
+                    <button class="banner-btn decline-btn" onclick="window.LSRetailCookies.declineAll()">
+                        <span class="btn-text">Decline</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Insert banner into DOM
+    document.body.insertAdjacentHTML('beforeend', bannerHTML);
+
+    // Enhanced JavaScript functionality
+    window.LSRetailCookies = {
+        consentState: {
+            essential: true,
+            functional: false,
+            analytics: false,
+            marketing: false
+        },
+
+        // Storage keys
+        storageKey: 'lsretail_cookie_consent',
+        expiryKey: 'lsretail_consent_expiry',
+        consentExpireDays: 365,
+
+        // Initialize the banner
+        init: function() {
+            this.loadStoredConsent();
+            this.setupEventListeners();
+            this.updateUI();
+            
+            // Auto-show banner if no stored consent or expired
+            if (!this.hasValidConsent()) {
+                setTimeout(() => this.showBanner(), 1000);
+            }
+        },
+
+        // Load stored consent preferences
+        loadStoredConsent: function() {
+            try {
+                const stored = localStorage.getItem(this.storageKey);
+                const expiry = localStorage.getItem(this.expiryKey);
+                
+                if (stored && expiry && new Date() < new Date(expiry)) {
+                    this.consentState = { ...this.consentState, ...JSON.parse(stored) };
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Failed to load stored consent:', e);
+            }
+            return false;
+        },
+
+        // Save consent preferences
+        saveConsent: function(state = null) {
+            try {
+                const consentToSave = state || this.consentState;
+                const expiry = new Date();
+                expiry.setDate(expiry.getDate() + this.consentExpireDays);
+                
+                localStorage.setItem(this.storageKey, JSON.stringify(consentToSave));
+                localStorage.setItem(this.expiryKey, expiry.toISOString());
+                
+                // Integrate with HubSpot
+                this.updateHubSpotConsent(consentToSave);
+                return true;
+            } catch (e) {
+                console.error('Failed to save consent:', e);
+                this.showToast('Failed to save preferences', 'error');
+                return false;
+            }
+        },
+
+        // Check if we have valid consent
+        hasValidConsent: function() {
+            const expiry = localStorage.getItem(this.expiryKey);
+            return expiry && new Date() < new Date(expiry);
+        },
+
+        // Setup enhanced event listeners
+        setupEventListeners: function() {
+            // Enhanced toggle functionality
+            const toggles = document.querySelectorAll('.toggle');
+            toggles.forEach(toggle => {
+                // Click events
+                toggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const category = toggle.dataset.category;
+                    if (category && category !== 'essential') {
+                        this.toggleConsent(category, toggle);
+                    }
+                });
+
+                // Keyboard events
+                toggle.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggle.click();
+                    }
+                });
+
+                // Touch events for mobile
+                let touchStartX = 0;
+                toggle.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                });
+
+                toggle.addEventListener('touchend', (e) => {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const category = toggle.dataset.category;
+                    
+                    if (category && category !== 'essential') {
+                        // Swipe detection
+                        const swipeDistance = touchEndX - touchStartX;
+                        if (Math.abs(swipeDistance) > 20) {
+                            const shouldEnable = swipeDistance > 0;
+                            if (shouldEnable !== this.consentState[category]) {
+                                this.toggleConsent(category, toggle);
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Keyboard navigation for banner
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const banner = document.getElementById('hs-eu-cookie-confirmation');
+                    if (banner.classList.contains('show')) {
+                        this.hideBanner();
+                    }
+                }
+            });
+        },
+
+        // Update UI to reflect current state
+        updateUI: function() {
+            Object.keys(this.consentState).forEach(category => {
+                if (category === 'essential') return;
+                
+                const toggle = document.querySelector(`[data-category="${category}"]`);
+                if (toggle) {
+                    const isActive = this.consentState[category];
+                    toggle.classList.toggle('active', isActive);
+                    toggle.setAttribute('aria-checked', isActive);
+                    
+                    // Update screen reader text
+                    const srText = toggle.querySelector('.sr-only');
+                    if (srText) {
+                        srText.textContent = `${isActive ? 'Disable' : 'Enable'} ${category.charAt(0).toUpperCase() + category.slice(1)} Cookies`;
+                    }
+                }
+            });
+        },
+
+        // Enhanced toggle functionality
+        toggleConsent: function(category, toggleEl) {
+            if (category === 'essential') return;
+
+            // Add transition class
+            toggleEl.classList.add('transitioning');
+            
+            // Update state
+            this.consentState[category] = !this.consentState[category];
+            
+            // Update UI
+            const isActive = this.consentState[category];
+            toggleEl.classList.toggle('active', isActive);
+            toggleEl.setAttribute('aria-checked', isActive);
+            
+            // Update screen reader text
+            const srText = toggleEl.querySelector('.sr-only');
+            if (srText) {
+                srText.textContent = `${isActive ? 'Disable' : 'Enable'} ${category.charAt(0).toUpperCase() + category.slice(1)} Cookies`;
+            }
+
+            // Remove transition class
+            setTimeout(() => {
+                toggleEl.classList.remove('transitioning');
+            }, 300);
+
+            console.log('Consent updated:', category, '=', this.consentState[category]);
+
+            // Provide feedback
+            this.showToast(`${category.charAt(0).toUpperCase() + category.slice(1)} cookies ${isActive ? 'enabled' : 'disabled'}`, 'success');
+        },
+
+        // Enhanced details toggle with accessibility
+        toggleDetails: function(category) {
+            const details = document.getElementById(category + '-details');
+            const button = event.target;
+            
+            const isExpanded = details.classList.contains('expanded');
+            
+            details.classList.toggle('expanded');
+            details.setAttribute('aria-hidden', isExpanded);
+            button.setAttribute('aria-expanded', !isExpanded);
+            button.textContent = isExpanded ? 'Learn More' : 'Show Less';
+        },
+
+        // Show/hide banner
+        showBanner: function() {
+            const banner = document.getElementById('hs-eu-cookie-confirmation');
+            banner.classList.add('show');
+            
+            // Focus management
+            banner.focus();
+        },
+
+        hideBanner: function() {
+            const banner = document.getElementById('hs-eu-cookie-confirmation');
+            const categories = document.getElementById('option-a-categories');
+            banner.classList.remove('show');
+            categories.classList.remove('show');
+            
+            // Reset settings button text
+            const settingsBtn = document.getElementById('hs-eu-cookie-settings-button');
+            settingsBtn.querySelector('.btn-text').textContent = 'Manage Cookie Preferences';
+        },
+
+        // Show/hide options panel
+        showOptionA: function() {
+            const categories = document.getElementById('option-a-categories');
+            const settingsBtn = document.getElementById('hs-eu-cookie-settings-button');
+            const btnText = settingsBtn.querySelector('.btn-text');
+
+            if (categories.classList.contains('show')) {
+                categories.classList.remove('show');
+                btnText.textContent = 'Manage Cookie Preferences';
+            } else {
+                categories.classList.add('show');
+                btnText.textContent = 'Close Preferences Panel';
+            }
+        },
+
+        // Button loading state
+        setButtonLoading: function(button, loading) {
+            const btnText = button.querySelector('.btn-text');
+            if (loading) {
+                button.disabled = true;
+                button.classList.add('loading');
+                btnText.innerHTML = 'Saving... <span class="spinner"></span>';
+            } else {
+                button.disabled = false;
+                button.classList.remove('loading');
+                btnText.innerHTML = btnText.getAttribute('data-original') || btnText.textContent.replace(/Saving\.\.\.|Loading\.\.\./g, '').trim();
+            }
+        },
+
+        // Enhanced save preferences
+        savePreferences: function() {
+            const saveBtn = event ? event.target : document.querySelector('.save-btn');
+            this.setButtonLoading(saveBtn, true);
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                const success = this.saveConsent();
+                this.setButtonLoading(saveBtn, false);
+                
+                if (success) {
+                    this.showToast('Your cookie preferences have been saved!', 'success');
+                    this.hideBanner();
+                } else {
+                    this.showToast('Failed to save preferences. Please try again.', 'error');
+                }
+            }, 1000);
+        },
+
+        // Accept all cookies
+        acceptAll: function() {
+            const acceptBtn = event ? event.target : document.querySelector('.accept-btn, .accept-all-btn');
+            this.setButtonLoading(acceptBtn, true);
+            
+            this.consentState.functional = true;
+            this.consentState.analytics = true;
+            this.consentState.marketing = true;
+            
+            setTimeout(() => {
+                this.updateUI();
+                const success = this.saveConsent();
+                this.setButtonLoading(acceptBtn, false);
+                
+                if (success) {
+                    this.showToast('All cookies accepted!', 'success');
+                    this.hideBanner();
+                }
+            }, 800);
+        },
+
+        // Reject all optional cookies
+        rejectAll: function() {
+            const rejectBtn = event ? event.target : document.querySelector('.reject-all-btn');
+            this.setButtonLoading(rejectBtn, true);
+            
+            this.consentState.functional = false;
+            this.consentState.analytics = false;
+            this.consentState.marketing = false;
+            
+            setTimeout(() => {
+                this.updateUI();
+                const success = this.saveConsent();
+                this.setButtonLoading(rejectBtn, false);
+                
+                if (success) {
+                    this.showToast('Optional cookies rejected!', 'success');
+                    this.hideBanner();
+                }
+            }, 800);
+        },
+
+        // Decline all (legacy function)
+        declineAll: function() {
+            this.rejectAll();
+        },
+
+        // Enhanced HubSpot integration
+        updateHubSpotConsent: function(consentState) {
+            try {
+                // HubSpot privacy API
+                if (window._hsp && window._hsp.push) {
+                    window._hsp.push(['updatePrivacyConsent', {
+                        analytics: consentState.analytics,
+                        functional: consentState.functional,
+                        marketing: consentState.marketing
+                    }]);
+                }
+
+                // HubSpot tracking code integration
+                if (window.hsConversationsSettings) {
+                    window.hsConversationsSettings.enableCookieConsent = true;
+                }
+
+                // Google Analytics integration
+                if (consentState.analytics) {
+                    if (typeof gtag !== 'undefined') {
+                        gtag('consent', 'update', {
+                            'analytics_storage': 'granted'
+                        });
+                    }
+                } else {
+                    if (typeof gtag !== 'undefined') {
+                        gtag('consent', 'update', {
+                            'analytics_storage': 'denied'
+                        });
+                    }
+                }
+
+                // Facebook Pixel integration
+                if (consentState.marketing) {
+                    if (typeof fbq !== 'undefined') {
+                        fbq('consent', 'grant');
+                    }
+                } else {
+                    if (typeof fbq !== 'undefined') {
+                        fbq('consent', 'revoke');
+                    }
+                }
+
+                console.log('✅ Updated consent with tracking services');
+            } catch (e) {
+                console.error('Failed to update tracking consent:', e);
+            }
+        },
+
+        // Enhanced toast notifications
+        showToast: function(message, type = 'success') {
+            // Remove existing toasts
+            const existingToasts = document.querySelectorAll('.toast');
+            existingToasts.forEach(toast => toast.remove());
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Auto-remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        },
+
+        // API for external integration
+        getConsentState: function() {
+            return { ...this.consentState };
+        },
+
+        setConsentState: function(newState) {
+            this.consentState = { ...this.consentState, ...newState };
+            this.updateUI();
+            this.saveConsent();
+        },
+
+        // Reset consent (for testing)
+        resetConsent: function() {
+            localStorage.removeItem(this.storageKey);
+            localStorage.removeItem(this.expiryKey);
+            this.consentState = {
+                essential: true,
+                functional: false,
+                analytics: false,
+                marketing: false
+            };
+            this.updateUI();
+            this.showBanner();
+        }
+    };
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            window.LSRetailCookies.init();
+        });
+    } else {
+        window.LSRetailCookies.init();
+    }
+
+    console.log('✅ Enhanced LS Retail Cookie Banner loaded successfully!');
+    console.log('Use window.LSRetailCookies to access all functions');
+    console.log('Available methods:', Object.keys(window.LSRetailCookies));
+
+})();

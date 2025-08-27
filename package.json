@@ -1,0 +1,28 @@
+{
+  "name": "ls-retail-cookie-banner",
+  "version": "1.0.0",
+  "description": "Enhanced GDPR-compliant cookie consent banner for LS Retail with HubSpot integration",
+  "main": "ls-retail-cookie-banner.js",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "echo \"No tests configured yet\""
+  },
+  "keywords": [
+    "cookie-consent",
+    "gdpr",
+    "hubspot",
+    "ls-retail",
+    "privacy",
+    "cookie-banner"
+  ],
+  "author": "LS Retail Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ls-retail-cookie-banner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ls-retail-cookie-banner/issues"
+  },
+  "homepage": "https://github.com/yourusername/ls-retail-cookie-banner#readme"
+}
